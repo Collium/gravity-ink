@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hanji Ink Pro | Optimized Zen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400&family=Raleway:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --panel-bg: rgba(255, 255, 255, 0.9);
+            --hanji-color: #f7f3e8;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--hanji-color);
+            font-family: 'Raleway', sans-serif;
+        }
+
+        .paper-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5; opacity: 0.5;
+            background-image: url('https://www.transparenttextures.com/patterns/handmade-paper.png');
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        #header {
+            position: absolute; top: 40px; left: 40px; z-index: 10; pointer-events: none;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif; font-size: 2.2rem;
+            margin: 0; letter-spacing: 3px; font-weight: 400; text-transform: uppercase;
+        }
+
+        /* Control Panel */
+        #controls {
+            position: absolute; top: 30px; right: 30px; width: 250px;
+            background: var(--panel-bg); padding: 20px; border-radius: 8px;
+            z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        .control-group { margin-bottom: 15px; }
+        label {
+            display: flex; justify-content: space-between;
+            font-size: 0.65rem; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 5px; font-weight: 700;
+        }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #333; }
+        button {
+            width: 100%; padding: 10px; background: #222; color: #fff;
+            border: none; cursor: pointer; font-size: 0.7rem; letter-spacing: 2px;
+        }
+
+        .footer {
+            position: absolute; bottom: 20px; width: 100%; text-align: center;
+            font-size: 0.6rem; letter-spacing: 3px; color: #bbb; z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="paper-overlay"></div>
+
+    <div id="header">
+        <h1>Hanji Ink</h1>
+        <p style="opacity:0.5; font-style:italic; font-size:0.9rem;">Smooth & Optimized Experience</p>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label>Master Opacity</label>
+            <input type="range" id="opacity" min="0.05" max="1" step="0.05" value="0.3">
+        </div>
+        <div class="control-group">
+            <label>Longevity <span>(Slow Fade)</span></label>
+            <input type="range" id="longevity" min="0.0005" max="0.01" step="0.0005" value="0.0025">
+        </div>
+        <div class="control-group">
+            <label>Flow Speed</label>
+            <input type="range" id="speed" min="0" max="1.5" step="0.1" value="0.4">
+        </div>
+        <div class="control-group">
+            <label>Bleeding Size</label>
+            <input type="range" id="spread" min="0.1" max="3" step="0.1" value="1.2">
+        </div>
+        <div class="control-group">
+            <label>Diffusion <span>(Blur)</span></label>
+            <input type="range" id="blur" min="1.1" max="5" step="0.1" value="2.5">
+        </div>
+        <button onclick="clearCanvas()">RESET CANVAS</button>
+    </div>
+
+    <canvas id="inkCanvas"></canvas>
+    <div class="footer">HIGH PERFORMANCE ZEN ART</div>
+
+    <script>
+        const canvas = document.getElementById('inkCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimization: Disable alpha on context if background is solid
+
+        const sliders = {
+            opacity: document.getElementById('opacity'),
+            longevity: document.getElementById('longevity'),
+            speed: document.getElementById('speed'),
+            spread: document.getElementById('spread'),
+            blur: document.getElementById('blur')
+        };
+
+        let particles = [];
+        let lastX = 0;
+        let lastY = 0;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class InkParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const spd = parseFloat(sliders.speed.value);
+                this.vx = (Math.random() - 0.5) * spd;
+                this.vy = (Math.random() - 0.5) * spd;
+                
+                this.size = Math.random() * 5 + 2; 
+                this.opacity = parseFloat(sliders.opacity.value);
+                this.growth = parseFloat(sliders.spread.value);
+                this.blurRatio = parseFloat(sliders.blur.value); // Gradient edge softeness
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.size += this.growth;
+                this.opacity -= parseFloat(sliders.longevity.value);
+            }
+
+            draw() {
+                if (this.opacity <= 0) return;
+
+                // Optimization: Using Radial Gradient instead of shadowBlur
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y, this.size * 0.1, 
+                    this.x, this.y, this.size * this.blurRatio
+                );
+                
+                gradient.addColorStop(0, `rgba(0, 0, 0, ${this.opacity})`);
+                gradient.addColorStop(1, `rgba(0, 0, 0, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(this.x - this.size * this.blurRatio, this.y - this.size * this.blurRatio, this.size * this.blurRatio * 2, this.size * this.blurRatio * 2);
+            }
+        }
+
+        function handleMove(e) {
+            const x = e.clientX || (e.touches && e.touches[0].clientX);
+            const y = e.clientY || (e.touches && e.touches[0].clientY);
+
+            // Optimization: Only create particle if moved more than 5px
+            const dist = Math.hypot(x - lastX, y - lastY);
+            if (dist > 5) {
+                particles.push(new InkParticle(x, y));
+                lastX = x;
+                lastY = y;
+            }
+        }
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove, { passive: true });
+
+        function clearCanvas() { particles = []; }
+
+        function animate() {
+            // Draw background to clear frame
+            ctx.fillStyle = '#f7f3e8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Optimization: Reverse loop for efficient splicing
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                if (p.opacity <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    p.draw();
+                }
+            }
+
+            // Keep particle count under control (safety net)
+            if(particles.length > 500) particles.shift();
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
